@@ -99,6 +99,11 @@ public abstract class SourceReaderBase<E, T, SplitT extends SourceSplit, SplitSt
     @Nullable private SplitContext<T, SplitStateT> currentSplitContext;
     @Nullable private SourceOutput<T> currentSplitOutput;
 
+    private SourceOutputWrapper<T> currentSplitOutputWrapper;
+
+    /** The record evaluator to handle end of input event. */
+    @Nullable protected RecordEvaluator<T> recordEvaluator;
+
     /** Indicating whether the SourceReader will be assigned more splits or not. */
     private boolean noMoreSplitsAssignment;
 
@@ -106,11 +111,13 @@ public abstract class SourceReaderBase<E, T, SplitT extends SourceSplit, SplitSt
             FutureCompletingBlockingQueue<RecordsWithSplitIds<E>> elementsQueue,
             SplitFetcherManager<E, SplitT> splitFetcherManager,
             RecordEmitter<E, T, SplitStateT> recordEmitter,
+            @Nullable RecordEvaluator<T> eofRecordEvaluator,
             Configuration config,
             SourceReaderContext context) {
         this.elementsQueue = elementsQueue;
         this.splitFetcherManager = splitFetcherManager;
         this.recordEmitter = recordEmitter;
+        this.recordEvaluator = eofRecordEvaluator;
         this.splitStates = new HashMap<>();
         this.options = new SourceReaderOptions(config);
         this.config = config;
@@ -141,8 +148,15 @@ public abstract class SourceReaderBase<E, T, SplitT extends SourceSplit, SplitSt
             if (record != null) {
                 // emit the record.
                 numRecordsInCounter.inc(1);
-                recordEmitter.emitRecord(record, currentSplitOutput, currentSplitContext.state);
+                currentSplitOutputWrapper = new SourceOutputWrapper<>();
+                currentSplitOutputWrapper.setSourceOutput(currentSplitOutput);
+                currentSplitOutputWrapper.setRecordEvaluator(recordEvaluator);
+                recordEmitter.emitRecord(
+                        record, currentSplitOutputWrapper, currentSplitContext.state);
                 LOG.trace("Emitted record: {}", record);
+                if (currentSplitOutputWrapper.isEndOfStreamReached()) {
+                    return trace(InputStatus.END_OF_INPUT);
+                }
 
                 // We always emit MORE_AVAILABLE here, even though we do not strictly know whether
                 // more is available. If nothing more is available, the next invocation will find
