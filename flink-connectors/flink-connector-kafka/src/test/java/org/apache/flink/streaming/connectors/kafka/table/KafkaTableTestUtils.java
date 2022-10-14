@@ -18,6 +18,7 @@
 
 package org.apache.flink.streaming.connectors.kafka.table;
 
+import org.apache.flink.api.common.JobStatus;
 import org.apache.flink.core.testutils.CommonTestUtils;
 import org.apache.flink.table.api.Table;
 import org.apache.flink.table.api.TableResult;
@@ -59,7 +60,9 @@ public class KafkaTableTestUtils {
                 .ifPresent(
                         jc -> {
                             try {
-                                jc.cancel().get(5, TimeUnit.SECONDS);
+                                if (jc.getJobStatus().get() != JobStatus.FINISHED) {
+                                    jc.cancel().get(5, TimeUnit.SECONDS);
+                                }
                             } catch (Exception e) {
                                 throw new RuntimeException(e);
                             }

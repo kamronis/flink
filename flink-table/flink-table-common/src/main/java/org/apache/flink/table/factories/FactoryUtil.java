@@ -117,6 +117,14 @@ public final class FactoryUtil {
                     .defaultValues("rest")
                     .withDescription("Specify the endpoints that are used.");
 
+    public static final ConfigOption<String> RECORD_EVALUATOR =
+            ConfigOptions.key("record.evaluator.class")
+                    .stringType()
+                    .noDefaultValue()
+                    .withDescription(
+                            "Defines a class for record evaluator to detect end of input."
+                                    + "By default, if this option is not defined.");
+
     /**
      * Suffix for keys of {@link ConfigOption} in case a connector requires multiple formats (e.g.
      * for both key and value).

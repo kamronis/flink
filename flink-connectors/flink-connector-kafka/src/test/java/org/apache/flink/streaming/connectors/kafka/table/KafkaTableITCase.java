@@ -55,6 +55,7 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import static org.apache.flink.core.testutils.CommonTestUtils.waitUtil;
+import static org.apache.flink.streaming.connectors.kafka.table.KafkaTableTestRecordEvaluator.maxRecords;
 import static org.apache.flink.streaming.connectors.kafka.table.KafkaTableTestUtils.collectRows;
 import static org.apache.flink.streaming.connectors.kafka.table.KafkaTableTestUtils.readLines;
 import static org.apache.flink.table.api.config.ExecutionConfigOptions.TABLE_EXEC_SOURCE_IDLE_TIMEOUT;
@@ -266,6 +267,51 @@ public class KafkaTableITCase extends KafkaTableTestBase {
 
         // ------------- cleanup -------------------
         topics.forEach(super::deleteTestTopic);
+    }
+
+    @Test
+    public void testKafkaSourceWithRecordEvaluator() throws Exception {
+        final String topic = "record_evaluator_topic_" + format;
+        createTestTopic(topic, 1, 1);
+
+        // ---------- Produce an event time stream into Kafka -------------------
+        String groupId = getStandardProps().getProperty("group.id");
+        String bootstraps = getBootstrapServers();
+        String recordEvaluatorClass = KafkaTableTestRecordEvaluator.class.getName();
+        final String createTable =
+                String.format(
+                        "CREATE TABLE kafka (\n"
+                                + "  `number` INT,\n"
+                                + "  `name` STRING,\n"
+                                + "  `age` INT\n"
+                                + ") WITH (\n"
+                                + "  'connector' = 'kafka',\n"
+                                + "  'topic' = '%s',\n"
+                                + "  'properties.bootstrap.servers' = '%s',\n"
+                                + "  'properties.group.id' = '%s',\n"
+                                + "  'scan.startup.mode' = 'earliest-offset',\n"
+                                + "  'record.evaluator.class' = '%s',\n"
+                                + "  %s\n"
+                                + ")",
+                        topic, bootstraps, groupId, recordEvaluatorClass, formatOptions());
+        tEnv.executeSql(createTable);
+
+        String initialValues =
+                "INSERT INTO kafka\n"
+                        + "VALUES\n"
+                        + " (0, 'Alice', 32),\n"
+                        + " (1, 'Bob', 22),\n"
+                        + " (2, 'Mary', 35),\n"
+                        + " (3, 'Bob', 22),\n"
+                        + " (4, 'Mary', 35),\n"
+                        + " (5, 'Alice', 32),\n"
+                        + " (6, 'Mary', 35),\n"
+                        + " (7, 'Liz', 65)";
+        tEnv.executeSql(initialValues).await();
+        // try to collect more than max
+        final List<Row> result = collectRows(tEnv.sqlQuery("SELECT * FROM kafka"), maxRecords * 2);
+        assertThat(result.size()).isEqualTo(maxRecords);
+        assertThat(result.get(maxRecords - 1).getField(0)).isEqualTo(2);
     }
 
     @Test

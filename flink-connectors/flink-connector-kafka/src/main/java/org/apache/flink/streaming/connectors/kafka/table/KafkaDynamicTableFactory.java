@@ -26,6 +26,7 @@ import org.apache.flink.configuration.ConfigOptions;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.connector.base.DeliveryGuarantee;
+import org.apache.flink.connector.base.source.reader.RecordEvaluator;
 import org.apache.flink.connector.kafka.source.KafkaSourceOptions;
 import org.apache.flink.streaming.connectors.kafka.config.StartupMode;
 import org.apache.flink.streaming.connectors.kafka.internals.KafkaTopicPartition;
@@ -63,6 +64,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static org.apache.flink.connector.base.table.util.ConnectorOptionsUtil.getFlinkRecordEvaluator;
 import static org.apache.flink.streaming.connectors.kafka.table.KafkaConnectorOptions.DELIVERY_GUARANTEE;
 import static org.apache.flink.streaming.connectors.kafka.table.KafkaConnectorOptions.KEY_FIELDS;
 import static org.apache.flink.streaming.connectors.kafka.table.KafkaConnectorOptions.KEY_FIELDS_PREFIX;
@@ -126,6 +128,7 @@ public class KafkaDynamicTableFactory
     public Set<ConfigOption<?>> optionalOptions() {
         final Set<ConfigOption<?>> options = new HashSet<>();
         options.add(FactoryUtil.FORMAT);
+        options.add(FactoryUtil.RECORD_EVALUATOR);
         options.add(KEY_FORMAT);
         options.add(KEY_FIELDS);
         options.add(KEY_FIELDS_PREFIX);
@@ -214,6 +217,7 @@ public class KafkaDynamicTableFactory
                 getSourceTopics(tableOptions),
                 getSourceTopicPattern(tableOptions),
                 properties,
+                getFlinkRecordEvaluator(tableOptions).orElse(null),
                 startupOptions.startupMode,
                 startupOptions.specificOffsets,
                 startupOptions.startupTimestampMillis,
@@ -375,6 +379,7 @@ public class KafkaDynamicTableFactory
             @Nullable List<String> topics,
             @Nullable Pattern topicPattern,
             Properties properties,
+            @Nullable RecordEvaluator<RowData> recordEvaluator,
             StartupMode startupMode,
             Map<KafkaTopicPartition, Long> specificStartupOffsets,
             long startupTimestampMillis,
@@ -389,6 +394,7 @@ public class KafkaDynamicTableFactory
                 topics,
                 topicPattern,
                 properties,
+                recordEvaluator,
                 startupMode,
                 specificStartupOffsets,
                 startupTimestampMillis,

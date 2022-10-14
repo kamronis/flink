@@ -23,6 +23,7 @@ import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.connector.source.Boundedness;
+import org.apache.flink.connector.base.source.reader.RecordEvaluator;
 import org.apache.flink.connector.kafka.source.KafkaSource;
 import org.apache.flink.connector.kafka.source.KafkaSourceBuilder;
 import org.apache.flink.connector.kafka.source.enumerator.initializer.OffsetsInitializer;
@@ -132,6 +133,9 @@ public class KafkaDynamicSource
     /** Properties for the Kafka consumer. */
     protected final Properties properties;
 
+    /** Record evaluator to handle end of input events. */
+    private final RecordEvaluator<RowData> recordEvaluator;
+
     /**
      * The startup mode for the contained consumer (default is {@link StartupMode#GROUP_OFFSETS}).
      */
@@ -164,6 +168,7 @@ public class KafkaDynamicSource
             @Nullable List<String> topics,
             @Nullable Pattern topicPattern,
             Properties properties,
+            @Nullable RecordEvaluator<RowData> recordEvaluator,
             StartupMode startupMode,
             Map<KafkaTopicPartition, Long> specificStartupOffsets,
             long startupTimestampMillis,
@@ -194,6 +199,7 @@ public class KafkaDynamicSource
         this.topics = topics;
         this.topicPattern = topicPattern;
         this.properties = Preconditions.checkNotNull(properties, "Properties must not be null.");
+        this.recordEvaluator = recordEvaluator;
         this.startupMode =
                 Preconditions.checkNotNull(startupMode, "Startup mode must not be null.");
         this.specificStartupOffsets =
@@ -311,6 +317,7 @@ public class KafkaDynamicSource
                         topics,
                         topicPattern,
                         properties,
+                        recordEvaluator,
                         startupMode,
                         specificStartupOffsets,
                         startupTimestampMillis,
@@ -429,6 +436,7 @@ public class KafkaDynamicSource
 
         kafkaSourceBuilder
                 .setProperties(properties)
+                .setEofRecordEvaluator(recordEvaluator)
                 .setDeserializer(KafkaRecordDeserializationSchema.of(kafkaDeserializer));
 
         return kafkaSourceBuilder.build();

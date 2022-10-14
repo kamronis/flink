@@ -971,6 +971,7 @@ public class KafkaDynamicTableFactoryTest {
                 topics,
                 topicPattern,
                 properties,
+                null,
                 startupMode,
                 specificStartupOffsets,
                 startupTimestampMillis,

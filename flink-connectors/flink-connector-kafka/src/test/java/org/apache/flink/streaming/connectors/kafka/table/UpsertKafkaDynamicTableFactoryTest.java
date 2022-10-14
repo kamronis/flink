@@ -606,6 +606,7 @@ public class UpsertKafkaDynamicTableFactoryTest extends TestLogger {
                 Collections.singletonList(topic),
                 null,
                 properties,
+                null,
                 StartupMode.EARLIEST,
                 Collections.emptyMap(),
                 0,
