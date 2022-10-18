@@ -72,6 +72,7 @@ public abstract class SingleThreadMultiplexSourceReaderBase<
     public SingleThreadMultiplexSourceReaderBase(
             Supplier<SplitReader<E, SplitT>> splitReaderSupplier,
             RecordEmitter<E, T, SplitStateT> recordEmitter,
+            RecordEvaluator<T> recordEvaluator,
             Configuration config,
             SourceReaderContext context) {
         this(
@@ -79,7 +80,7 @@ public abstract class SingleThreadMultiplexSourceReaderBase<
                         config.getInteger(SourceReaderOptions.ELEMENT_QUEUE_CAPACITY)),
                 splitReaderSupplier,
                 recordEmitter,
-                null,
+                recordEvaluator,
                 config,
                 context);
     }

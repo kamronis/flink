@@ -63,7 +63,7 @@ class FileSourceReaderTest {
     private static FileSourceReader<String, FileSourceSplit> createReader(
             TestingReaderContext context) {
         return new FileSourceReader<>(
-                context, new StreamFormatAdapter<>(new TextLineInputFormat()), new Configuration());
+                context, new StreamFormatAdapter<>(new TextLineInputFormat()), null, new Configuration());
     }
 
     private static FileSourceSplit createTestFileSplit() throws IOException {

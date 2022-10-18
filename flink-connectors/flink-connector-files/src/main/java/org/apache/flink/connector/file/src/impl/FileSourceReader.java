@@ -22,6 +22,7 @@ import org.apache.flink.annotation.Internal;
 import org.apache.flink.api.connector.source.SourceReader;
 import org.apache.flink.api.connector.source.SourceReaderContext;
 import org.apache.flink.configuration.Configuration;
+import org.apache.flink.connector.base.source.reader.RecordEvaluator;
 import org.apache.flink.connector.base.source.reader.SingleThreadMultiplexSourceReaderBase;
 import org.apache.flink.connector.file.src.FileSourceSplit;
 import org.apache.flink.connector.file.src.FileSourceSplitState;
@@ -39,10 +40,12 @@ public final class FileSourceReader<T, SplitT extends FileSourceSplit>
     public FileSourceReader(
             SourceReaderContext readerContext,
             BulkFormat<T, SplitT> readerFormat,
+            RecordEvaluator<T> recordEvaluator,
             Configuration config) {
         super(
                 () -> new FileSourceSplitReader<>(config, readerFormat),
                 new FileSourceRecordEmitter<>(),
+                recordEvaluator,
                 config,
                 readerContext);
     }

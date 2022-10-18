@@ -22,6 +22,7 @@ import org.apache.flink.api.common.JobID;
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.api.common.restartstrategy.RestartStrategies;
 import org.apache.flink.connector.file.src.reader.TextLineInputFormat;
+import org.apache.flink.connector.file.src.testutils.TestingFileEvaluator;
 import org.apache.flink.core.fs.Path;
 import org.apache.flink.runtime.highavailability.nonha.embedded.HaLeadershipControl;
 import org.apache.flink.runtime.minicluster.MiniCluster;
@@ -108,6 +109,44 @@ class FileSourceTextLinesITCase {
             @TempDir java.nio.file.Path tmpTestDir, @InjectMiniCluster MiniCluster miniCluster)
             throws Exception {
         testBoundedTextFileSource(tmpTestDir, FailoverType.JM, miniCluster);
+    }
+
+    @Test
+    void testFileSourceEvaluator(
+            @TempDir java.nio.file.Path tmpTestDir)
+            throws Exception {
+        final File testDir = tmpTestDir.toFile();
+
+        // our main test data
+        writeAllFiles(testDir);
+
+        // write some junk to hidden files test that common hidden file patterns are filtered by
+        // default
+        writeHiddenJunkFiles(testDir);
+
+        int maxRecords = 5;
+
+        final FileSource<String> source =
+                FileSource.forRecordStreamFormat(
+                                new TextLineInputFormat(), new TestingFileEvaluator<>(maxRecords), Path.fromLocalFile(testDir))
+                        .build();
+
+        final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
+        env.setParallelism(1);
+
+        final DataStream<String> stream =
+                env.fromSource(source, WatermarkStrategy.noWatermarks(), "file-source");
+
+        final ClientAndIterator<String> client =
+                DataStreamUtils.collectWithClient(
+                        stream, "Bounded TextFiles Test");
+        final List<String> result = new ArrayList<>();
+        while (client.iterator.hasNext()) {
+            result.add(client.iterator.next());
+        }
+
+        assertThat(maxRecords).isEqualTo(result.size());
+        checkContains(result);
     }
 
     private void testBoundedTextFileSource(
@@ -293,6 +332,10 @@ class FileSourceTextLinesITCase {
         Arrays.sort(actual);
 
         assertThat(actual).isEqualTo(expected);
+    }
+
+    private static void checkContains(List<String> lines) {
+        assertThat(LINES).containsAll(lines);
     }
 
     // ------------------------------------------------------------------------

@@ -27,6 +27,7 @@ import org.apache.flink.api.connector.source.SourceReaderContext;
 import org.apache.flink.api.connector.source.SplitEnumerator;
 import org.apache.flink.api.connector.source.SplitEnumeratorContext;
 import org.apache.flink.api.java.typeutils.ResultTypeQueryable;
+import org.apache.flink.connector.base.source.reader.RecordEvaluator;
 import org.apache.flink.connector.file.src.assigners.FileSplitAssigner;
 import org.apache.flink.connector.file.src.enumerate.FileEnumerator;
 import org.apache.flink.connector.file.src.impl.ContinuousFileSplitEnumerator;
@@ -77,6 +78,8 @@ public abstract class AbstractFileSource<T, SplitT extends FileSourceSplit>
 
     private final BulkFormat<T, SplitT> readerFormat;
 
+    @Nullable private final RecordEvaluator<T> recordEvaluator;
+
     @Nullable private final ContinuousEnumerationSettings continuousEnumerationSettings;
 
     // ------------------------------------------------------------------------
@@ -86,6 +89,7 @@ public abstract class AbstractFileSource<T, SplitT extends FileSourceSplit>
             final FileEnumerator.Provider fileEnumerator,
             final FileSplitAssigner.Provider splitAssigner,
             final BulkFormat<T, SplitT> readerFormat,
+            @Nullable RecordEvaluator<T> recordEvaluator,
             @Nullable final ContinuousEnumerationSettings continuousEnumerationSettings) {
 
         checkArgument(inputPaths.length > 0);
@@ -93,6 +97,7 @@ public abstract class AbstractFileSource<T, SplitT extends FileSourceSplit>
         this.enumeratorFactory = checkNotNull(fileEnumerator);
         this.assignerFactory = checkNotNull(splitAssigner);
         this.readerFormat = checkNotNull(readerFormat);
+        this.recordEvaluator = recordEvaluator;
         this.continuousEnumerationSettings = continuousEnumerationSettings;
     }
 
@@ -123,7 +128,7 @@ public abstract class AbstractFileSource<T, SplitT extends FileSourceSplit>
     @Override
     public SourceReader<T, SplitT> createReader(SourceReaderContext readerContext) {
         return new FileSourceReader<>(
-                readerContext, readerFormat, readerContext.getConfiguration());
+                readerContext, readerFormat, recordEvaluator, readerContext.getConfiguration());
     }
 
     @Override
@@ -259,6 +264,7 @@ public abstract class AbstractFileSource<T, SplitT extends FileSourceSplit>
         // mandatory - have no defaults
         protected final Path[] inputPaths;
         protected final BulkFormat<T, SplitT> readerFormat;
+        @Nullable protected final RecordEvaluator<T> recordEvaluator;
 
         // optional - have defaults
         protected FileEnumerator.Provider fileEnumerator;
@@ -268,11 +274,13 @@ public abstract class AbstractFileSource<T, SplitT extends FileSourceSplit>
         protected AbstractFileSourceBuilder(
                 final Path[] inputPaths,
                 final BulkFormat<T, SplitT> readerFormat,
+                final RecordEvaluator<T> recordEvaluator,
                 final FileEnumerator.Provider defaultFileEnumerator,
                 final FileSplitAssigner.Provider defaultSplitAssigner) {
 
             this.inputPaths = checkNotNull(inputPaths);
             this.readerFormat = checkNotNull(readerFormat);
+            this.recordEvaluator = recordEvaluator;
             this.fileEnumerator = defaultFileEnumerator;
             this.splitAssigner = defaultSplitAssigner;
         }

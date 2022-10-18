@@ -88,6 +88,7 @@ public class HiveSource<T> extends AbstractFileSource<T, HiveSourceSplit> {
                 fileEnumerator,
                 splitAssigner,
                 readerFormat,
+                null,
                 continuousEnumerationSettings);
         this.jobConfWrapper = new JobConfWrapper(jobConf);
         this.tablePath = tablePath;

@@ -19,6 +19,7 @@
 package org.apache.flink.connector.file.src;
 
 import org.apache.flink.annotation.PublicEvolving;
+import org.apache.flink.connector.base.source.reader.RecordEvaluator;
 import org.apache.flink.connector.file.src.assigners.FileSplitAssigner;
 import org.apache.flink.connector.file.src.assigners.LocalityAwareSplitAssigner;
 import org.apache.flink.connector.file.src.enumerate.BlockSplittingRecursiveEnumerator;
@@ -126,6 +127,7 @@ public final class FileSource<T> extends AbstractFileSource<T, FileSourceSplit> 
             final FileEnumerator.Provider fileEnumerator,
             final FileSplitAssigner.Provider splitAssigner,
             final BulkFormat<T, FileSourceSplit> readerFormat,
+            @Nullable final RecordEvaluator<T> recordEvaluator,
             @Nullable final ContinuousEnumerationSettings continuousEnumerationSettings) {
 
         super(
@@ -133,6 +135,7 @@ public final class FileSource<T> extends AbstractFileSource<T, FileSourceSplit> 
                 fileEnumerator,
                 splitAssigner,
                 readerFormat,
+                recordEvaluator,
                 continuousEnumerationSettings);
     }
 
@@ -158,6 +161,11 @@ public final class FileSource<T> extends AbstractFileSource<T, FileSourceSplit> 
      * (GZip).
      */
     public static <T> FileSourceBuilder<T> forRecordStreamFormat(
+            final StreamFormat<T> streamFormat, RecordEvaluator<T> recordEvaluator, final Path... paths) {
+        return forBulkFileFormat(new StreamFormatAdapter<>(streamFormat), recordEvaluator, paths);
+    }
+
+    public static <T> FileSourceBuilder<T> forRecordStreamFormat(
             final StreamFormat<T> streamFormat, final Path... paths) {
         return forBulkFileFormat(new StreamFormatAdapter<>(streamFormat), paths);
     }
@@ -170,11 +178,15 @@ public final class FileSource<T> extends AbstractFileSource<T, FileSourceSplit> 
      */
     public static <T> FileSourceBuilder<T> forBulkFileFormat(
             final BulkFormat<T, FileSourceSplit> bulkFormat, final Path... paths) {
+        return forBulkFileFormat(bulkFormat, null, paths);
+    }
+    public static <T> FileSourceBuilder<T> forBulkFileFormat(
+            final BulkFormat<T, FileSourceSplit> bulkFormat, @Nullable RecordEvaluator<T> recordEvaluator, final Path... paths) {
         checkNotNull(bulkFormat, "reader");
         checkNotNull(paths, "paths");
         checkArgument(paths.length > 0, "paths must not be empty");
 
-        return new FileSourceBuilder<>(paths, bulkFormat);
+        return new FileSourceBuilder<>(paths, bulkFormat, recordEvaluator);
     }
 
     /**
@@ -209,10 +221,11 @@ public final class FileSource<T> extends AbstractFileSource<T, FileSourceSplit> 
     public static final class FileSourceBuilder<T>
             extends AbstractFileSourceBuilder<T, FileSourceSplit, FileSourceBuilder<T>> {
 
-        FileSourceBuilder(Path[] inputPaths, BulkFormat<T, FileSourceSplit> readerFormat) {
+        FileSourceBuilder(Path[] inputPaths, BulkFormat<T, FileSourceSplit> readerFormat, RecordEvaluator<T> recordEvaluator) {
             super(
                     inputPaths,
                     readerFormat,
+                    recordEvaluator,
                     readerFormat.isSplittable()
                             ? DEFAULT_SPLITTABLE_FILE_ENUMERATOR
                             : DEFAULT_NON_SPLITTABLE_FILE_ENUMERATOR,
@@ -226,6 +239,7 @@ public final class FileSource<T> extends AbstractFileSource<T, FileSourceSplit> 
                     fileEnumerator,
                     splitAssigner,
                     readerFormat,
+                    recordEvaluator,
                     continuousSourceSettings);
         }
     }
